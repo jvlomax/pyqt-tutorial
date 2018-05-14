@@ -1,10 +1,16 @@
 import sys
-from collections import OrderedDict
+from collections import namedtuple
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction
 
 from pt6.app_ui import Ui_MainWindow
+
+
+class ShoppingListItem:
+    def __init__(self, name, checked=False):
+        self.name = name
+        self.checked = checked
 
 
 class MyApplication(QMainWindow):
@@ -13,7 +19,8 @@ class MyApplication(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.show()
-        self.shopping_list = OrderedDict()
+        self.shopping_list = []
+
         self.list_view_model = QStandardItemModel()
         self.ui.shoppingListView.setModel(self.list_view_model)
 
@@ -28,48 +35,38 @@ class MyApplication(QMainWindow):
         self.list_view_model.itemChanged.connect(self.item_checked)
         self.ui.addItemButton.clicked.connect(self.add_button_clicked)
 
-    @pyqtSlot()
-    def add_button_clicked(self):
-        text = self.ui.itemInputEdit.text()
-        if not text:
-            return
-        self.ui.itemInputEdit.clear()
-        self.shopping_list[text] = 0
+    def update_ui(self):
         self.list_view_model.clear()
-
-        for list_item in self.shopping_list.keys():
-            item = QStandardItem(list_item)
+        for list_item in self.shopping_list:
+            item = QStandardItem(list_item.name)
             item.setCheckable(True)
-            self.list_view_model.appendRow(item)
-
-    def item_checked(self, item):
-        if item.checkState():
-            self.shopping_list[item.text()] = 1
-        else:
-            self.shopping_list[item.text()] = 0
-        self.update_list_model()
-
-
-    def remove_checked(self):
-        self.shopping_list = OrderedDict({k: v for k, v in self.shopping_list.items() if not v})
-        self.update_list_model()
-
-    def update_list_model(self):
-        self.list_view_model.clear()
-        for list_item, checked in self.shopping_list.items():
-            item = QStandardItem(list_item)
-            item.setCheckable(True)
-            item.setCheckState(checked)
+            item.setCheckState(list_item.checked)
             font = item.font()
-            font.setStrikeOut(checked)
+            font.setStrikeOut(list_item.checked)
             item.setFont(font)
             self.list_view_model.appendRow(item)
+
+    @pyqtSlot()
+    def add_button_clicked(self):
+        self.shopping_list.append(ShoppingListItem(name=self.ui.itemInputEdit.text(), checked=False))
+        self.ui.itemInputEdit.clear()
+        self.update_ui()
+
+    @pyqtSlot()
+    def item_checked(self, item):
+        print(item.index().row())
+        print(self.shopping_list[item.index().row()])
+        self.shopping_list[item.index().row()].checked = item.checkState()
+        self.update_ui()
+
+    def remove_checked(self):
+        self.shopping_list = [item for item in self.shopping_list if not item.checked]
+        self.update_ui()
 
     @pyqtSlot()
     def clear_list(self):
         self.shopping_list = []
         self.list_view_model.clear()
-
 
 
 if __name__ == "__main__":
